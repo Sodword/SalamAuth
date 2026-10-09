@@ -1,7 +1,27 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import GoogleButton from '../components/GoogleButton'
+import { startGoogleOAuth } from '../lib/supabase'
 
 function Entry() {
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [googleError, setGoogleError] = useState('')
+
+  const handleGoogleSignIn = async () => {
+    if (isGoogleLoading) {
+      return
+    }
+
+    setGoogleError('')
+    setIsGoogleLoading(true)
+    const error = await startGoogleOAuth(true)
+
+    if (error) {
+      setGoogleError(error)
+      setIsGoogleLoading(false)
+    }
+  }
+
   return (
     <main className="entry-page">
       <section className="entry-content" aria-labelledby="entry-title">
@@ -30,7 +50,16 @@ function Entry() {
           <Link className="entry-login" to="/login">
             Login
           </Link>
-          <GoogleButton onClick={() => {}} />
+          <GoogleButton
+            onClick={handleGoogleSignIn}
+            disabled={isGoogleLoading}
+            isLoading={isGoogleLoading}
+          />
+          {googleError ? (
+            <p className="form-alert error" role="alert">
+              {googleError}
+            </p>
+          ) : null}
         </div>
       </section>
     </main>

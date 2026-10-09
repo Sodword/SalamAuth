@@ -116,3 +116,30 @@ const authStorage = {
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: { storage: authStorage },
 })
+
+export async function startGoogleOAuth(rememberMe = true) {
+  if (!setAuthPersistence(rememberMe)) {
+    return 'Your browser could not configure session storage. Enable browser storage and try again.'
+  }
+
+  if (!markGoogleOAuthPending()) {
+    return 'Your browser could not start Google sign-in. Enable browser storage and try again.'
+  }
+
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/login` },
+    })
+
+    if (error) {
+      clearGoogleOAuthPending()
+      return 'Google sign-in could not be started. Please try again.'
+    }
+
+    return ''
+  } catch {
+    clearGoogleOAuthPending()
+    return 'Google sign-in could not be started. Please try again.'
+  }
+}

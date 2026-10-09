@@ -1,10 +1,11 @@
-function GoogleButton({ onClick, fullWidth = true, disabled = false }) {
+function GoogleButton({ onClick, fullWidth = true, disabled = false, isLoading = false }) {
   return (
     <button
       type="button"
       className={`google-button ${fullWidth ? 'full-width' : ''}`}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
@@ -24,7 +25,7 @@ function GoogleButton({ onClick, fullWidth = true, disabled = false }) {
           d="M12 3.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8A9.9 9.9 0 0 0 12 1a10 10 0 0 0-8.9 5.5l3.2 2.5c.7-2.3 2.9-4 5.7-4z"
         />
       </svg>
-      Continue with Google
+      {isLoading ? 'Connecting to Google...' : 'Continue with Google'}
     </button>
   )
 }

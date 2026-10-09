@@ -6,9 +6,8 @@ import PasswordInput from '../components/PasswordInput'
 import GoogleButton from '../components/GoogleButton'
 import LoadingButton from '../components/LoadingButton'
 import {
-  clearGoogleOAuthPending,
-  markGoogleOAuthPending,
   setAuthPersistence,
+  startGoogleOAuth,
   supabase,
 } from '../lib/supabase'
 
@@ -112,32 +111,9 @@ function Signup() {
     setSubmitError('')
     setIsGoogleLoading(true)
 
-    try {
-      if (!setAuthPersistence(true)) {
-        setSubmitError('Your browser could not configure session storage. Enable browser storage and try again.')
-        setIsGoogleLoading(false)
-        return
-      }
-
-      if (!markGoogleOAuthPending()) {
-        setSubmitError('Your browser could not start Google sign-in. Enable browser storage and try again.')
-        setIsGoogleLoading(false)
-        return
-      }
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}/login` },
-      })
-
-      if (error) {
-        clearGoogleOAuthPending()
-        setSubmitError('Google sign-in could not be started. Please try again.')
-        setIsGoogleLoading(false)
-      }
-    } catch {
-      clearGoogleOAuthPending()
-      setSubmitError('Google sign-in could not be started. Please try again.')
+    const error = await startGoogleOAuth(true)
+    if (error) {
+      setSubmitError(error)
       setIsGoogleLoading(false)
     }
   }
@@ -212,7 +188,11 @@ function Signup() {
           <span>OR</span>
         </div>
 
-        <GoogleButton onClick={handleGoogleSignIn} disabled={isSubmitting || isGoogleLoading} />
+        <GoogleButton
+          onClick={handleGoogleSignIn}
+          disabled={isSubmitting}
+          isLoading={isGoogleLoading}
+        />
       </form>
     </AuthLayout>
   )
