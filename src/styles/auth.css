@@ -1,8 +1,13 @@
 .auth-page-shell {
   min-height: 100vh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
-  padding: 32px 16px;
+  padding:
+    max(32px, env(safe-area-inset-top, 0px))
+    max(16px, env(safe-area-inset-right, 0px))
+    max(32px, env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
 }
 
 .auth-card {
@@ -251,8 +256,12 @@
   min-height: 100vh;
   min-height: 100svh;
   place-items: center;
-  overflow: hidden;
-  padding: 32px 20px;
+  overflow-x: clip;
+  padding:
+    max(32px, env(safe-area-inset-top, 0px))
+    max(20px, env(safe-area-inset-right, 0px))
+    max(32px, env(safe-area-inset-bottom, 0px))
+    max(20px, env(safe-area-inset-left, 0px));
   background:
     radial-gradient(ellipse at 50% 38%, rgba(30, 93, 172, 0.2), transparent 40%),
     linear-gradient(145deg, #0b1220 0%, #101a2b 52%, #0a111e 100%);
@@ -306,7 +315,6 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  opacity: 0.78;
 }
 
 .entry-wordmark {
@@ -409,7 +417,11 @@
 
 @media (max-width: 480px) {
   .entry-page {
-    padding: 24px 22px;
+    padding:
+      max(24px, env(safe-area-inset-top, 0px))
+      max(22px, env(safe-area-inset-right, 0px))
+      max(24px, env(safe-area-inset-bottom, 0px))
+      max(22px, env(safe-area-inset-left, 0px));
   }
 
   .entry-actions {
