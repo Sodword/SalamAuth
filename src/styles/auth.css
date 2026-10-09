@@ -321,7 +321,7 @@
   position: relative;
   z-index: 1;
   display: flex;
-  margin: -19px 0 0;
+  margin: 10px 0 0;
   font-size: clamp(2.6rem, 9vw, 3.25rem);
   font-weight: 700;
   line-height: 1.15;
