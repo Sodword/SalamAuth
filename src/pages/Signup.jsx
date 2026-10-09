@@ -5,7 +5,12 @@ import AuthInput from '../components/AuthInput'
 import PasswordInput from '../components/PasswordInput'
 import GoogleButton from '../components/GoogleButton'
 import LoadingButton from '../components/LoadingButton'
-import { supabase } from '../lib/supabase'
+import {
+  clearGoogleOAuthPending,
+  markGoogleOAuthPending,
+  setAuthPersistence,
+  supabase,
+} from '../lib/supabase'
 
 const initialState = {
   fullName: '',
@@ -72,6 +77,11 @@ function Signup() {
     setSubmitError('')
 
     try {
+      if (!setAuthPersistence(true)) {
+        setSubmitError('Your browser could not configure session storage. Enable browser storage and try again.')
+        return
+      }
+
       const { error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: form.password,
@@ -103,16 +113,30 @@ function Signup() {
     setIsGoogleLoading(true)
 
     try {
+      if (!setAuthPersistence(true)) {
+        setSubmitError('Your browser could not configure session storage. Enable browser storage and try again.')
+        setIsGoogleLoading(false)
+        return
+      }
+
+      if (!markGoogleOAuthPending()) {
+        setSubmitError('Your browser could not start Google sign-in. Enable browser storage and try again.')
+        setIsGoogleLoading(false)
+        return
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: `${window.location.origin}/login` },
       })
 
       if (error) {
+        clearGoogleOAuthPending()
         setSubmitError('Google sign-in could not be started. Please try again.')
         setIsGoogleLoading(false)
       }
     } catch {
+      clearGoogleOAuthPending()
       setSubmitError('Google sign-in could not be started. Please try again.')
       setIsGoogleLoading(false)
     }

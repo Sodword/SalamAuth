@@ -9,4 +9,110 @@ if (!supabaseUrl || !supabasePublishableKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabasePublishableKey)
+const projectRef = new URL(supabaseUrl).hostname.split('.')[0]
+const persistencePreferenceKey = `salamauth:${projectRef}:session-persistence`
+const googleOAuthPendingKey = `salamauth:${projectRef}:google-oauth-pending`
+
+function getPersistenceMode() {
+  try {
+    const tabPreference = window.sessionStorage.getItem(persistencePreferenceKey)
+    if (tabPreference === 'session' || tabPreference === 'persistent') {
+      return tabPreference
+    }
+
+    if (window.localStorage.getItem(persistencePreferenceKey) === 'persistent') {
+      return 'persistent'
+    }
+  } catch {
+    return 'persistent'
+  }
+
+  return 'persistent'
+}
+
+export function setAuthPersistence(rememberMe) {
+  try {
+    const persistentStorage = window.localStorage
+    const tabStorage = window.sessionStorage
+
+    if (rememberMe) {
+      persistentStorage.setItem(persistencePreferenceKey, 'persistent')
+      tabStorage.setItem(persistencePreferenceKey, 'persistent')
+    } else {
+      tabStorage.setItem(persistencePreferenceKey, 'session')
+      persistentStorage.removeItem(persistencePreferenceKey)
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function markGoogleOAuthPending() {
+  try {
+    window.sessionStorage.setItem(googleOAuthPendingKey, 'true')
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function consumeGoogleOAuthPending() {
+  try {
+    const isPending = window.sessionStorage.getItem(googleOAuthPendingKey) === 'true'
+    window.sessionStorage.removeItem(googleOAuthPendingKey)
+    return isPending
+  } catch {
+    return false
+  }
+}
+
+export function hasGoogleOAuthPending() {
+  try {
+    return window.sessionStorage.getItem(googleOAuthPendingKey) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function clearGoogleOAuthPending() {
+  try {
+    window.sessionStorage.removeItem(googleOAuthPendingKey)
+  } catch {
+    // Ignore unavailable session storage.
+  }
+}
+
+const authStorage = {
+  getItem(key) {
+    try {
+      const storage =
+        getPersistenceMode() === 'session' ? window.sessionStorage : window.localStorage
+      return storage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  setItem(key, value) {
+    const mode = getPersistenceMode()
+    const activeStorage = mode === 'session' ? window.sessionStorage : window.localStorage
+    const inactiveStorage = mode === 'session' ? window.localStorage : window.sessionStorage
+
+    activeStorage.setItem(key, value)
+    inactiveStorage.removeItem(key)
+  },
+  removeItem(key) {
+    for (const storage of [window.localStorage, window.sessionStorage]) {
+      try {
+        storage.removeItem(key)
+      } catch {
+        // Continue clearing the other storage location when one is unavailable.
+      }
+    }
+  },
+}
+
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  auth: { storage: authStorage },
+})
