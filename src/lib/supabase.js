@@ -12,19 +12,24 @@ if (!supabaseUrl || !supabasePublishableKey) {
 const projectRef = new URL(supabaseUrl).hostname.split('.')[0]
 const persistencePreferenceKey = `salamauth:${projectRef}:session-persistence`
 const googleOAuthPendingKey = `salamauth:${projectRef}:google-oauth-pending`
+const supabaseSessionKey = `sb-${projectRef}-auth-token`
 
 function getPersistenceMode() {
+  try {
+    if (window.localStorage.getItem(persistencePreferenceKey) === 'persistent') {
+      return 'persistent'
+    }
+  } catch {
+    // Session storage can still be selected if persistent storage is unavailable.
+  }
+
   try {
     const tabPreference = window.sessionStorage.getItem(persistencePreferenceKey)
     if (tabPreference === 'session' || tabPreference === 'persistent') {
       return tabPreference
     }
-
-    if (window.localStorage.getItem(persistencePreferenceKey) === 'persistent') {
-      return 'persistent'
-    }
   } catch {
-    return 'persistent'
+    // Use persistent storage as the default when no explicit mode is readable.
   }
 
   return 'persistent'
@@ -32,19 +37,24 @@ function getPersistenceMode() {
 
 export function setAuthPersistence(rememberMe) {
   try {
-    const persistentStorage = window.localStorage
-    const tabStorage = window.sessionStorage
-
     if (rememberMe) {
-      persistentStorage.setItem(persistencePreferenceKey, 'persistent')
-      tabStorage.setItem(persistencePreferenceKey, 'persistent')
+      window.localStorage.setItem(persistencePreferenceKey, 'persistent')
+      try {
+        window.sessionStorage.setItem(persistencePreferenceKey, 'persistent')
+      } catch {
+        // Persistent storage remains usable if session storage is blocked.
+      }
     } else {
-      tabStorage.setItem(persistencePreferenceKey, 'session')
-      persistentStorage.removeItem(persistencePreferenceKey)
+      window.sessionStorage.setItem(persistencePreferenceKey, 'session')
+      window.localStorage.removeItem(persistencePreferenceKey)
+      window.localStorage.removeItem(supabaseSessionKey)
     }
 
     return true
   } catch {
+    if (import.meta.env?.DEV) {
+      console.error('[SalamAuth] Could not configure the selected session storage mode.')
+    }
     return false
   }
 }
@@ -96,11 +106,30 @@ const authStorage = {
   },
   setItem(key, value) {
     const mode = getPersistenceMode()
-    const activeStorage = mode === 'session' ? window.sessionStorage : window.localStorage
-    const inactiveStorage = mode === 'session' ? window.localStorage : window.sessionStorage
+    let activeStorage
+    let inactiveStorage
 
-    activeStorage.setItem(key, value)
-    inactiveStorage.removeItem(key)
+    try {
+      activeStorage = mode === 'session' ? window.sessionStorage : window.localStorage
+      inactiveStorage = mode === 'session' ? window.localStorage : window.sessionStorage
+      activeStorage.setItem(key, value)
+    } catch (error) {
+      const storageError = new Error('Unable to write the Supabase session to browser storage.')
+      storageError.name = 'AuthStorageError'
+      storageError.cause = error
+      throw storageError
+    }
+
+    try {
+      inactiveStorage.removeItem(key)
+    } catch (error) {
+      if (import.meta.env?.DEV) {
+        console.warn('[SalamAuth] Could not clear the inactive session store.', {
+          name: error?.name || 'Error',
+          mode,
+        })
+      }
+    }
   },
   removeItem(key) {
     for (const storage of [window.localStorage, window.sessionStorage]) {

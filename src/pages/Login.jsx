@@ -6,8 +6,10 @@ import PasswordInput from '../components/PasswordInput'
 import GoogleButton from '../components/GoogleButton'
 import LoadingButton from '../components/LoadingButton'
 import { useAuth } from '../lib/auth-context'
+import { getLoginErrorMessage, logAuthDiagnostic } from '../lib/auth-errors'
 import {
   consumeGoogleOAuthPending,
+  setAuthPersistence,
   startGoogleOAuth,
   supabase,
 } from '../lib/supabase'
@@ -135,28 +137,21 @@ function Login() {
       })
 
       if (error) {
-        const message = error.message.toLowerCase()
-        const isUnverified =
-          error.code === 'email_not_confirmed' || message.includes('email not confirmed')
-        const isInvalidCredentials =
-          error.code === 'invalid_credentials' || message.includes('invalid login credentials')
-
-        if (isUnverified) {
+        if (
+          error.code === 'email_not_confirmed' ||
+          error.message.toLowerCase().includes('email not confirmed')
+        ) {
           setNeedsEmailVerification(true)
-          setSubmitError('Please verify your email address before signing in.')
-        } else if (isInvalidCredentials) {
-          setSubmitError('Email or password is incorrect. Check your details and try again.')
-        } else if (error.status === 429) {
-          setSubmitError('Too many sign-in attempts. Please wait a moment and try again.')
-        } else {
-          setSubmitError('We could not sign you in right now. Please try again.')
         }
+        logAuthDiagnostic('email sign-in response', error)
+        setSubmitError(getLoginErrorMessage(error))
         return
       }
 
       navigate(location.state?.from?.pathname || '/dashboard', { replace: true })
-    } catch {
-      setSubmitError('Unable to reach the authentication service. Check your connection and try again.')
+    } catch (error) {
+      logAuthDiagnostic('email sign-in exception', error)
+      setSubmitError(getLoginErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }
